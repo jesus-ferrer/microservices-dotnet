@@ -1,3 +1,6 @@
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+
 var builder = WebApplication.CreateBuilder(args);
 
 var services = builder.Services;
@@ -20,7 +23,14 @@ services.AddMarten(opt =>
     opt.Connection(configuration.GetConnectionString("catalogDb")!);
 }).UseLightweightSessions();
 
+if (builder.Environment.IsDevelopment())
+    builder.Services.InitializeMartenWith<CatalogInitialData>();
+
 services.AddExceptionHandler<CustomExceptionHandler>();
+
+services
+    .AddHealthChecks()
+    .AddNpgSql(configuration.GetConnectionString("catalogDb")!);
 
 var app = builder.Build();
 
@@ -30,6 +40,13 @@ app.MapCarter();
 app.UseExceptionHandler(opts =>
 {
 });
+
+
+app.UseHealthChecks("/health",
+    new HealthCheckOptions
+    {
+        ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+    });
 
 // Inline code ExceptionHandler
 //app.UseExceptionHandler(exceptionHandlerapp =>
