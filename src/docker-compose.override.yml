@@ -10,6 +10,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_catalog:/var/lib/postgresql/data/
+  
   basketdb:
     container_name: basketdb
     environment:
@@ -21,6 +22,14 @@ services:
       - "5433:5432"
     volumes:
       - postgres_basket:/var/lib/postgresql/data/
+
+  distibutedcache:
+    container_name: distibutedcache
+    restart: always
+    ports:
+      - "6379:6379"
+      - "8881:8001"
+
   catalog.api:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
@@ -32,6 +41,37 @@ services:
       - "6060:8081"
     depends_on: 
       - catalogdb
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
+      - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
+
+  basket.api:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ASPNETCORE_HTTPS_PORTS=8081
+      - ConnectionStrings__Basketdb=Server=Basketdb;Port=5432;Database=BasketDb;User Id=postgres;Password=1234
+      - ConnectionStrings__Redis=distibutedcache:6379
+      - GrpcSettings__DiscountUrl=https://discount.grpc:8081
+    ports:
+      - "6001:8080"
+      - "6061:8081"
+    depends_on: 
+      - basketdb
+      - distibutedcache
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
+      - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
+
+  discount.grpc:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ASPNETCORE_HTTPS_PORTS=8081
+      - ConnectionStrings__DB=Data Source=discountdb
+    ports:
+      - "6002:8080"
+      - "6062:8081"
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
       - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
